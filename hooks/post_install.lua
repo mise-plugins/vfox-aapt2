@@ -7,28 +7,43 @@ local util = require("util")
 function PLUGIN:PostInstall(ctx)
     local rootPath = ctx.rootPath
     local os_name = util.getOsName()
-    local version = ctx.version
 
-    -- The downloaded file is a JAR (ZIP) containing the aapt2 binary
-    -- vfox should have extracted it, but the JAR contains the binary directly
-    -- We need to find and make it executable
+    -- Find the JAR file in the install directory
+    local find_cmd
+    local jar_path
+    if OS_TYPE == "windows" then
+        find_cmd = string.format('dir /b "%s\\aapt2-*.jar" 2>nul', rootPath)
+    else
+        find_cmd = string.format('ls "%s"/aapt2-*.jar 2>/dev/null | head -1', rootPath)
+    end
 
-    local jar_name = string.format("aapt2-%s-%s.jar", version, os_name)
-    local jar_path = rootPath .. "/" .. jar_name
+    local handle = io.popen(find_cmd)
+    if handle then
+        jar_path = handle:read("*l")
+        handle:close()
+    end
+
+    if not jar_path or jar_path == "" then
+        -- JAR not found, maybe already extracted
+        return
+    end
+
+    -- On Windows, need to prepend the rootPath
+    if OS_TYPE == "windows" and not string.match(jar_path, "^[A-Za-z]:") then
+        jar_path = rootPath .. "\\" .. jar_path
+    end
 
     -- Extract the JAR file (it's a ZIP)
     local extract_cmd
     if OS_TYPE == "windows" then
-        -- On Windows, use PowerShell to extract
         extract_cmd = string.format('powershell -Command "Expand-Archive -Path \'%s\' -DestinationPath \'%s\' -Force"', jar_path, rootPath)
     else
-        -- On Unix-like systems, use unzip
         extract_cmd = string.format('unzip -o "%s" -d "%s"', jar_path, rootPath)
     end
 
     local result = os.execute(extract_cmd)
     if not result then
-        error("Failed to extract JAR file")
+        error("Failed to extract JAR file: " .. jar_path)
     end
 
     -- Remove the JAR file after extraction
