@@ -22,11 +22,10 @@ jobs:
       - name: Install aapt2 from local plugin
         run: |
           mise settings set experimental true
-          mise registry set aapt2 "vfox:file://${{ github.workspace }}"
-          mise use aapt2@8.7.3
+          mise use "vfox:file://${{ github.workspace }}@8.7.3"
         env:
           MISE_DEBUG: 1
 
       - name: Verify aapt2 works
         run: |
-          mise x aapt2@8.7.3 -- aapt2 version
+          mise x "vfox:file://${{ github.workspace }}@8.7.3" -- aapt2 version
